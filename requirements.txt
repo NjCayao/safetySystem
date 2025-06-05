@@ -3,3 +3,5 @@ dlib
 numpy
 scipy
 PyYAML>=6.0
+psutil
+pygame
