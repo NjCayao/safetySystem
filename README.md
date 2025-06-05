@@ -50,11 +50,16 @@ safety_system/
     ├── utils/               # Funciones auxiliares
     ├── config/              # Configuraciones
     ├── audio/               # Archivos de audio para alertas
+│   ├── sync/                            # 🆕 NUEVO - Comunicación Pi ↔ Server
+│   │   ├── config_sync_client.py        #  Cliente sincronización
+│   │   ├── device_auth.py               #  Autenticación de dispositivo
+│   │   └── heartbeat_sender.py          #  Envío de heartbeats
 │   
 │
 ├── server/
     ├── assets/            # Archivos CSS, JS, imágenes de AdminLTE -- modulo echo
     |   ├── js/
+            └── device-config.js
             ├── realtime-alerts.js
     ├── config/            # Archivos de configuración
     │   ├── database.php   # Conexión a la base de datos  -- modulo echo
@@ -72,6 +77,7 @@ safety_system/
     │   ├── footer.php     # Pie de página común -- modulo echo
     │   └── functions.php  # Funciones auxiliares -- modulo echo
     │   ├── content.php     # Pie de página común -- modulo echo
+        ├── device_config.php        # ✅ PASO 2 - Funciones backend
     │   └── photo_functions.php  # Funciones auxiliares -- modulo echo
     ├── models/            # Lógica para interactuar con la base de datos
     │   ├── Operator.php   # Clase para gestionar operadores
@@ -103,6 +109,7 @@ safety_system/
     │   │       ├── register.php          # Para registrar dispositivos nuevos
     │   │       └── status.php            # Para actualizar/verificar estado
                 ├── heartbeat.php         # 
+                |-- config.php               # ✅ PASO 3 - API Pi ↔ Server
     │   ├── config/
     │   │   ├── core.php                  # Configuración central de la API
     │   │   ├── database.php              # Configuración de base de datos
@@ -146,6 +153,18 @@ safety_system/
     │   |    ├── edit.php     
     │   |    ├── delete.php 
     │   |    ├── view.php
+            ├── config.php               # ✅ PASO 4 - Lista dispositivos
+│   │   │   ├── configure.php            # ✅ PASO 5 - Configuración individual
+│   │   │   ├── get_config_history.php   # ✅ PASO 6.1 - Historial
+│   │   │   ├── retry_config.php         # ✅ PASO 6.2 - Reintentar
+│   │   │   ├── load_default_config.php  # ✅ PASO 6.3 - Config por defecto
+│   │   │   ├── test_connection.php      # ✅ PASO 6.4 - Test conexión
+│   │   │   ├── export_config.php        # ✅ PASO 6.5 - Exportar
+│   │   │   ├── apply_profile.php        # ✅ PASO 6.6 - Aplicar perfil
+│   │   │   ├── duplicate_config.php     # ✅ PASO 6.7 - Duplicar
+│   │   │   ├── reset_config.php         # ✅ PASO 6.8 - Reset
+│   │   │   ├── get_config_details.php   #  PASO 6.9 - Detalles config
+│   │   │   └── rollback_config.php      #  PASO 6.10 - Rollback
     |   ├── users/             # 
     │   |    ├── index.php     
     │   |    ├── stats.php 

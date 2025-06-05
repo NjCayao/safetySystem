@@ -286,7 +286,55 @@ function timeAgo($datetime) {
                                     <td>
                                         <?php if ($device['machine_id']): ?>
                                             <a href="../machines/view.php?id=<?php echo $device['machine_id']; ?>">
-                                                <?php if ($device['config_status'] === 'sync_error'): ?>
+                                                <?php echo htmlspecialchars($device['machine_name'] ?? $device['machine_id']); ?>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-muted">Sin asignar</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <i class="<?php echo $status['icon']; ?> <?php echo $status['class']; ?>"></i>
+                                        <?php echo $status['text']; ?>
+                                        <?php if ($device['config_pending']): ?>
+                                            <br><small class="text-warning">
+                                                <i class="fas fa-exclamation-circle"></i> Cambios pendientes
+                                            </small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">v<?php echo $device['config_version']; ?></span>
+                                    </td>
+                                    <td>
+                                        <?php if ($device['config_applied']): ?>
+                                            <span title="<?php echo date('d/m/Y H:i:s', strtotime($device['config_applied'])); ?>">
+                                                <?php echo timeAgo($device['config_applied']); ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">Nunca</span>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($device['last_change_summary']): ?>
+                                            <br><small class="text-muted">
+                                                <?php echo htmlspecialchars($device['last_change_summary']); ?>
+                                            </small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="configure.php?id=<?php echo $device['device_id']; ?>" 
+                                               class="btn btn-primary btn-sm" 
+                                               title="Configurar">
+                                                <i class="fas fa-cog"></i>
+                                            </a>
+                                            
+                                            <button type="button" 
+                                                    class="btn btn-info btn-sm" 
+                                                    onclick="viewConfigHistory('<?php echo $device['device_id']; ?>')"
+                                                    title="Ver Historial">
+                                                <i class="fas fa-history"></i>
+                                            </button>
+                                            
+                                            <?php if ($device['config_status'] === 'sync_error'): ?>
                                             <button type="button" 
                                                     class="btn btn-warning btn-sm" 
                                                     onclick="retryConfiguration('<?php echo $device['device_id']; ?>')"
@@ -441,55 +489,7 @@ function setupCustomFilters() {
     $('#filterType').on('change', function() {
         const type = $(this).val();
         if (type) {
-            table.column(2).search('^' + type + 'php echo htmlspecialchars($device['machine_name'] ?? $device['machine_id']); ?>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-muted">Sin asignar</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <i class="<?php echo $status['icon']; ?> <?php echo $status['class']; ?>"></i>
-                                        <?php echo $status['text']; ?>
-                                        <?php if ($device['config_pending']): ?>
-                                            <br><small class="text-warning">
-                                                <i class="fas fa-exclamation-circle"></i> Cambios pendientes
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-info">v<?php echo $device['config_version']; ?></span>
-                                    </td>
-                                    <td>
-                                        <?php if ($device['config_applied']): ?>
-                                            <span title="<?php echo date('d/m/Y H:i:s', strtotime($device['config_applied'])); ?>">
-                                                <?php echo timeAgo($device['config_applied']); ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-muted">Nunca</span>
-                                        <?php endif; ?>
-                                        
-                                        <?php if ($device['last_change_summary']): ?>
-                                            <br><small class="text-muted">
-                                                <?php echo htmlspecialchars($device['last_change_summary']); ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group">
-                                            <a href="configure.php?id=<?php echo $device['device_id']; ?>" 
-                                               class="btn btn-primary btn-sm" 
-                                               title="Configurar">
-                                                <i class="fas fa-cog"></i>
-                                            </a>
-                                            
-                                            <button type="button" 
-                                                    class="btn btn-info btn-sm" 
-                                                    onclick="viewConfigHistory('<?php echo $device['device_id']; ?>')"
-                                                    title="Ver Historial">
-                                                <i class="fas fa-history"></i>
-                                            </button>
-                                            
-                                            <?, true, false).draw();
+            table.column(2).search('^' + type + '$', true, false).draw();
         } else {
             table.column(2).search('').draw();
         }
@@ -790,52 +790,4 @@ function showNotification(type, message) {
 .row-updated {
     animation: highlightUpdate 2s ease-out;
 }
-</style>php echo htmlspecialchars($device['machine_name'] ?? $device['machine_id']); ?>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-muted">Sin asignar</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <i class="<?php echo $status['icon']; ?> <?php echo $status['class']; ?>"></i>
-                                        <?php echo $status['text']; ?>
-                                        <?php if ($device['config_pending']): ?>
-                                            <br><small class="text-warning">
-                                                <i class="fas fa-exclamation-circle"></i> Cambios pendientes
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-info">v<?php echo $device['config_version']; ?></span>
-                                    </td>
-                                    <td>
-                                        <?php if ($device['config_applied']): ?>
-                                            <span title="<?php echo date('d/m/Y H:i:s', strtotime($device['config_applied'])); ?>">
-                                                <?php echo timeAgo($device['config_applied']); ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-muted">Nunca</span>
-                                        <?php endif; ?>
-                                        
-                                        <?php if ($device['last_change_summary']): ?>
-                                            <br><small class="text-muted">
-                                                <?php echo htmlspecialchars($device['last_change_summary']); ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group">
-                                            <a href="configure.php?id=<?php echo $device['device_id']; ?>" 
-                                               class="btn btn-primary btn-sm" 
-                                               title="Configurar">
-                                                <i class="fas fa-cog"></i>
-                                            </a>
-                                            
-                                            <button type="button" 
-                                                    class="btn btn-info btn-sm" 
-                                                    onclick="viewConfigHistory('<?php echo $device['device_id']; ?>')"
-                                                    title="Ver Historial">
-                                                <i class="fas fa-history"></i>
-                                            </button>
-                                            
-                                            <?
+</style>
