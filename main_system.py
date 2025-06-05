@@ -9,7 +9,7 @@ import psutil
 from datetime import datetime
 from collections import deque
 
-# 🆕 NUEVO: Importar sistema de configuración
+# 🆕 NUEVO: Importar sistema de configuración Y sincronización
 try:
     from config.config_manager import get_config, has_gui, is_development, is_production
     CONFIG_AVAILABLE = True
@@ -17,6 +17,17 @@ try:
 except ImportError:
     CONFIG_AVAILABLE = False
     print("⚠️ Sistema de configuración no disponible, usando valores por defecto")
+
+# 🆕 NUEVO: Importar clientes de sincronización
+try:
+    from sync.config_sync_client import get_config_sync_client
+    from sync.heartbeat_sender import get_heartbeat_sender
+    from sync.device_auth import get_device_authenticator
+    SYNC_AVAILABLE = True
+    print("✅ Sistema de sincronización cargado")
+except ImportError:
+    SYNC_AVAILABLE = False
+    print("⚠️ Sistema de sincronización no disponible")
 
 # Importar módulos individuales
 from camera_module import CameraModule
@@ -243,6 +254,28 @@ class SafetySystem:
         # 🆕 NUEVO: Inicializar optimizador de rendimiento
         self.optimizer = PerformanceOptimizer(self.is_prod_mode) if self.enable_optimization else None
         
+        # 🆕 NUEVO: Inicializar clientes de sincronización
+        self.config_sync_client = None
+        self.heartbeat_sender = None
+        self.device_authenticator = None
+        
+        if SYNC_AVAILABLE:
+            try:
+                self.config_sync_client = get_config_sync_client()
+                self.heartbeat_sender = get_heartbeat_sender()
+                self.device_authenticator = get_device_authenticator()
+                
+                # Configurar callback para cambios de configuración
+                self.config_sync_client.add_config_change_callback(self._on_config_changed)
+                
+                print("🔄 Sincronización inicializada:")
+                print(f"   - Device ID: {self.device_authenticator.get_device_id()}")
+                print(f"   - Autenticado: {'SÍ' if self.device_authenticator.is_authenticated() else 'NO'}")
+                
+            except Exception as e:
+                self.logger.error(f"Error inicializando sincronización: {e}")
+                print(f"⚠️ Error en sincronización: {e}")
+        
         # Definir el directorio de reportes
         self.reports_dir = REPORTS_DIR
         
@@ -254,6 +287,10 @@ class SafetySystem:
         self.frame_counter = 0
         self.last_metrics_update = 0
         self.metrics_update_interval = 1.0  # Actualizar métricas cada segundo
+        
+        # 🆕 NUEVO: Control de reconfiguración dinámica
+        self.config_reload_pending = False
+        self.last_config_reload = 0
         
         # Tiempos para alertas
         self.last_alert_times = {
@@ -275,7 +312,8 @@ class SafetySystem:
             'frames_processed': 0,
             'detections_skipped': 0,
             'optimizations_applied': 0,
-            'memory_cleanups': 0
+            'memory_cleanups': 0,
+            'config_reloads': 0
         }
         
         # Inicializar módulos
@@ -334,8 +372,77 @@ class SafetySystem:
             logger.warning("Error al inicializar módulo de alarma")
             print("ADVERTENCIA: No se pudo inicializar el módulo de alarma")
         
+        # 🆕 NUEVO: Inicializar sincronización
+        if SYNC_AVAILABLE:
+            try:
+                # Iniciar cliente de configuración
+                if self.config_sync_client:
+                    self.config_sync_client.start()
+                    print("🔄 Cliente de configuración iniciado")
+                
+                # Iniciar heartbeats
+                if self.heartbeat_sender:
+                    self.heartbeat_sender.start()
+                    print("💓 Heartbeats iniciados")
+                
+                # Probar conexión inicial
+                if self.device_authenticator:
+                    test_result = self.device_authenticator.test_connection()
+                    if test_result['success']:
+                        print(f"🌐 Conexión con servidor: ✅ {test_result['message']}")
+                    else:
+                        print(f"🌐 Conexión con servidor: ⚠️ {test_result['message']}")
+                
+            except Exception as e:
+                logger.error(f"Error inicializando sincronización: {e}")
+                print(f"⚠️ Error en sincronización: {e}")
+        
         print("Sistema inicializado correctamente")
         return True
+    
+    def _on_config_changed(self, old_config, new_config):
+        """
+        🆕 NUEVO: Callback cuando cambia la configuración remotamente
+        """
+        try:
+            self.logger.info("Configuración actualizada remotamente")
+            print("🔄 CONFIGURACIÓN ACTUALIZADA desde servidor")
+            
+            # Marcar para recarga en el siguiente ciclo
+            self.config_reload_pending = True
+            self.performance_stats['config_reloads'] += 1
+            
+            # Mostrar resumen de cambios principales
+            self._log_config_changes(old_config, new_config)
+            
+        except Exception as e:
+            self.logger.error(f"Error procesando cambio de configuración: {e}")
+    
+    def _log_config_changes(self, old_config, new_config):
+        """Registra los cambios de configuración principales"""
+        try:
+            changes = []
+            
+            # Verificar cambios en secciones críticas
+            critical_sections = ['camera', 'fatigue', 'behavior']
+            
+            for section in critical_sections:
+                if section in old_config and section in new_config:
+                    old_section = old_config[section]
+                    new_section = new_config[section]
+                    
+                    for key, new_value in new_section.items():
+                        old_value = old_section.get(key)
+                        if old_value != new_value:
+                            changes.append(f"{section}.{key}: {old_value} → {new_value}")
+            
+            if changes:
+                self.logger.info(f"Cambios aplicados: {'; '.join(changes[:5])}")  # Solo primeros 5
+                if not self.show_gui:  # En modo headless, mostrar en consola
+                    print(f"   Cambios: {'; '.join(changes[:3])}")
+            
+        except Exception as e:
+            self.logger.warning(f"Error registrando cambios de configuración: {e}")
     
     def _should_update_metrics(self, current_time):
         """Determina si debe actualizar métricas de rendimiento"""
@@ -381,6 +488,41 @@ class SafetySystem:
             
         return should_process
     
+    def _process_config_reload(self):
+        """
+        🆕 NUEVO: Procesa recarga de configuración si está pendiente
+        """
+        if not self.config_reload_pending:
+            return
+        
+        current_time = time.time()
+        
+        # Evitar recargas muy frecuentes
+        if current_time - self.last_config_reload < 5:  # Mínimo 5 segundos entre recargas
+            return
+        
+        try:
+            self.logger.info("Aplicando recarga de configuración...")
+            
+            # Recargar configuración en config manager
+            if CONFIG_AVAILABLE:
+                from config.config_manager import get_config_manager
+                config_manager = get_config_manager()
+                config_manager.reload()
+            
+            # Actualizar configuraciones locales que no requieren reinicio
+            self.alert_cooldown = get_config('alerts.cooldown_time', 5) if CONFIG_AVAILABLE else 5
+            
+            # Marcar como procesada
+            self.config_reload_pending = False
+            self.last_config_reload = current_time
+            
+            print("🔄 Configuración recargada exitosamente")
+            
+        except Exception as e:
+            self.logger.error(f"Error recargando configuración: {e}")
+            print(f"⚠️ Error recargando configuración: {e}")
+    
     def start(self):
         """Inicia el sistema de seguridad optimizado"""
         logger.info("Sistema de seguridad optimizado iniciado")
@@ -399,6 +541,7 @@ class SafetySystem:
         print(f"\n🚀 SISTEMA INICIADO - MODO {'PRODUCCIÓN (Pi)' if self.is_prod_mode else 'DESARROLLO'}")
         print(f"   GUI: {'HABILITADA' if self.show_gui else 'DESHABILITADA'}")
         print(f"   Optimización: {'HABILITADA' if self.enable_optimization else 'DESHABILITADA'}")
+        print(f"   Sincronización: {'HABILITADA' if SYNC_AVAILABLE else 'DESHABILITADA'}")
         if self.show_gui:
             print("   Presiona 'q' para salir")
         else:
@@ -412,6 +555,9 @@ class SafetySystem:
                     self.frame_counter += 1
                     self.performance_stats['frames_processed'] += 1
                     current_time = time.time()
+                    
+                    # 🆕 NUEVO: Procesar recarga de configuración si está pendiente
+                    self._process_config_reload()
                     
                     # 🆕 NUEVO: Procesar optimización de rendimiento
                     if self._should_update_metrics(current_time):
@@ -440,7 +586,14 @@ class SafetySystem:
                         if self.optimizer:
                             opt_level = self.optimizer.get_optimization_level()
                             color = (0, 255, 0) if opt_level == 0 else (0, 165, 255) if opt_level == 1 else (0, 0, 255)
-                            cv2.putText(frame, f"FPS: {fps:.1f} | Opt: L{opt_level}", (10, 30), 
+                            status_text = f"FPS: {fps:.1f} | Opt: L{opt_level}"
+                            
+                            # Agregar información de sincronización
+                            if SYNC_AVAILABLE and self.device_authenticator:
+                                sync_status = "🟢" if self.device_authenticator.is_authenticated() else "🔴"
+                                status_text += f" | Sync: {sync_status}"
+                            
+                            cv2.putText(frame, status_text, (10, 30), 
                                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
                         else:
                             cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), 
@@ -524,6 +677,9 @@ class SafetySystem:
                                 status += f" | Opt: L{opt_level}"
                             if self.current_operator:
                                 status += f" | Op: {self.current_operator['name']}"
+                            if SYNC_AVAILABLE and self.device_authenticator:
+                                sync_status = "✅" if self.device_authenticator.is_authenticated() else "❌"
+                                status += f" | Sync: {sync_status}"
                             print(status)
                     
                 except Exception as e:
@@ -681,6 +837,11 @@ class SafetySystem:
                 if self.optimizer:
                     f.write(f"Nivel de optimización: {self.optimizer.get_optimization_level()}\n")
                 
+                # 🆕 NUEVO: Información de sincronización
+                if SYNC_AVAILABLE and self.device_authenticator:
+                    f.write(f"Device ID: {self.device_authenticator.get_device_id()}\n")
+                    f.write(f"Autenticado: {'Sí' if self.device_authenticator.is_authenticated() else 'No'}\n")
+                
                 # Detalles específicos según el tipo de alerta
                 if details:
                     for key, value in details.items():
@@ -701,6 +862,21 @@ class SafetySystem:
         logger.info("Deteniendo sistema optimizado")
         print("🛑 Deteniendo sistema...")
         self.is_running = False
+        
+        # 🆕 NUEVO: Detener clientes de sincronización
+        if SYNC_AVAILABLE:
+            try:
+                if self.config_sync_client:
+                    self.config_sync_client.stop()
+                    print("🔄 Cliente de configuración detenido")
+                
+                if self.heartbeat_sender:
+                    self.heartbeat_sender.stop()
+                    print("💓 Heartbeats detenidos")
+                
+            except Exception as e:
+                self.logger.error(f"Error deteniendo sincronización: {e}")
+        
         self.camera.release()
         
         # 🆕 NUEVO: Solo destruir ventanas si GUI estaba habilitada
@@ -714,6 +890,7 @@ class SafetySystem:
             print(f"   Detecciones omitidas (optimización): {self.performance_stats['detections_skipped']}")
             print(f"   Optimizaciones aplicadas: {self.performance_stats['optimizations_applied']}")
             print(f"   Limpiezas de memoria: {self.performance_stats['memory_cleanups']}")
+            print(f"   Recargas de configuración: {self.performance_stats['config_reloads']}")
             
             if self.optimizer:
                 print(self.optimizer.get_status_report())

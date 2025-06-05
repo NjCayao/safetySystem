@@ -20,6 +20,27 @@ if (function_exists('db_fetch_one')) {
         $pendingAlerts = $result['count'];
     }
 }
+
+// 🆕 NUEVO: Contar dispositivos offline y configuraciones pendientes
+$offlineDevices = 0;
+$pendingConfigs = 0;
+if (function_exists('db_fetch_one')) {
+    try {
+        $result = db_fetch_one("SELECT COUNT(*) as count FROM devices WHERE status = 'offline'");
+        if ($result) {
+            $offlineDevices = $result['count'];
+        }
+        
+        $result = db_fetch_one("SELECT COUNT(*) as count FROM devices WHERE config_pending = 1");
+        if ($result) {
+            $pendingConfigs = $result['count'];
+        }
+    } catch (Exception $e) {
+        // Si no existe la tabla, valores por defecto
+        $offlineDevices = 0;
+        $pendingConfigs = 0;
+    }
+}
 ?>
 <!-- Main Sidebar Container -->
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
@@ -84,28 +105,80 @@ if (function_exists('db_fetch_one')) {
           </ul>
         </li>
 
-        <!-- Dispositivos -->
+        <!-- 🆕 DISPOSITIVOS ACTUALIZADO - MÓDULO COMPLETO -->
         <li class="nav-item <?php echo (strpos($currentDir, 'devices') !== false) ? 'menu-open' : ''; ?>">
           <a href="#" class="nav-link <?php echo (strpos($currentDir, 'devices') !== false) ? 'active' : ''; ?>">
             <i class="nav-icon fas fa-microchip"></i>
             <p>
               Dispositivos
+              <?php if ($offlineDevices > 0): ?>
+                <span class="badge badge-danger right"><?php echo $offlineDevices; ?></span>
+              <?php elseif ($pendingConfigs > 0): ?>
+                <span class="badge badge-warning right"><?php echo $pendingConfigs; ?></span>
+              <?php endif; ?>
               <i class="right fas fa-angle-left"></i>
             </p>
           </a>
           <ul class="nav nav-treeview">
+            <!-- Lista de Dispositivos -->
             <li class="nav-item">
               <a href="<?php echo BASE_URL; ?>/pages/devices/index.php" class="nav-link <?php echo ($currentPage == 'index.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
-                <i class="far fa-circle nav-icon"></i>
+                <i class="fas fa-list nav-icon"></i>
                 <p>Lista de Dispositivos</p>
               </a>
             </li>
+            
+            <!-- Nuevo Dispositivo -->
             <li class="nav-item">
               <a href="<?php echo BASE_URL; ?>/pages/devices/create.php" class="nav-link <?php echo ($currentPage == 'create.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
-                <i class="far fa-circle nav-icon"></i>
+                <i class="fas fa-plus nav-icon"></i>
                 <p>Nuevo Dispositivo</p>
               </a>
             </li>
+            
+            <!-- 🆕 NUEVO: Gestión de Configuraciones -->
+            <li class="nav-item">
+              <a href="<?php echo BASE_URL; ?>/pages/devices/config.php" class="nav-link <?php echo ($currentPage == 'config.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
+                <i class="fas fa-cogs nav-icon"></i>
+                <p>
+                  Gestión de Configuraciones
+                  <?php if ($pendingConfigs > 0): ?>
+                    <span class="badge badge-warning right"><?php echo $pendingConfigs; ?></span>
+                  <?php endif; ?>
+                </p>
+              </a>
+            </li>
+            
+            <!-- 🆕 NUEVO: Estado en Tiempo Real -->
+            <li class="nav-item">
+              <a href="<?php echo BASE_URL; ?>/pages/devices/status.php" class="nav-link <?php echo ($currentPage == 'status.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
+                <i class="fas fa-wifi nav-icon"></i>
+                <p>
+                  Estado en Tiempo Real
+                  <?php if ($offlineDevices > 0): ?>
+                    <span class="badge badge-danger right"><?php echo $offlineDevices; ?></span>
+                  <?php endif; ?>
+                </p>
+              </a>
+            </li>
+            
+            <!-- 🆕 NUEVO: Historial de Configuraciones -->
+            <li class="nav-item">
+              <a href="<?php echo BASE_URL; ?>/pages/devices/history.php" class="nav-link <?php echo ($currentPage == 'history.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
+                <i class="fas fa-history nav-icon"></i>
+                <p>Historial de Configuraciones</p>
+              </a>
+            </li>
+            
+            <!-- 🆕 NUEVO: Perfiles de Configuración (Solo Admin/Supervisor) -->
+            <?php if (isset($_SESSION['user_id']) && ($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'supervisor')): ?>
+            <li class="nav-item">
+              <a href="<?php echo BASE_URL; ?>/pages/devices/profiles.php" class="nav-link <?php echo ($currentPage == 'profiles.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
+                <i class="fas fa-layer-group nav-icon"></i>
+                <p>Perfiles de Configuración</p>
+              </a>
+            </li>
+            <?php endif; ?>
           </ul>
         </li>
 

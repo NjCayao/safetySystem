@@ -91,3 +91,43 @@
 2025-06-05 01:31:24,529 - CameraModule - INFO - Aplicando optimizaciones para desarrollo...
 2025-06-05 01:31:29,594 - MainSystem - INFO - Deteniendo sistema optimizado
 2025-06-05 01:31:29,610 - CameraModule - INFO - Cámara liberada
+2025-06-05 03:18:36,374 - SafetySystem - INFO - Iniciando sistema de seguridad optimizado
+2025-06-05 03:18:37,422 - ConfigManager - DEBUG - Configuración 'yawn.enable_night_mode' no encontrada, usando default: True
+2025-06-05 03:18:37,422 - ConfigManager - DEBUG - Configuración 'yawn.night_mode_threshold' no encontrada, usando default: 50
+2025-06-05 03:18:37,423 - ConfigManager - DEBUG - Configuración 'yawn.night_adjustment' no encontrada, usando default: 0.05
+2025-06-05 03:18:37,423 - ConfigManager - DEBUG - Configuración 'yawn.show_debug_info' no encontrada, usando default: True
+2025-06-05 03:18:37,423 - ConfigManager - DEBUG - Configuración 'yawn.show_mouth_contour' no encontrada, usando default: True
+2025-06-05 03:18:37,423 - ConfigManager - DEBUG - Configuración 'yawn.show_progress_bar' no encontrada, usando default: True
+2025-06-05 03:18:37,423 - ConfigManager - DEBUG - Configuración 'yawn.show_light_level' no encontrada, usando default: True
+2025-06-05 03:18:37,423 - ConfigManager - DEBUG - Configuración 'yawn.show_mar_value' no encontrada, usando default: True
+2025-06-05 03:18:37,423 - ConfigManager - DEBUG - Configuración 'yawn.show_mode_indicator' no encontrada, usando default: True
+2025-06-05 03:18:37,423 - ConfigManager - DEBUG - Configuración 'audio.files.fallback' no encontrada, usando default: alarma.mp3
+2025-06-05 03:18:37,572 - ConfigManager - DEBUG - Configuración 'distraction.night_mode_threshold' no encontrada, usando default: 50
+2025-06-05 03:18:37,572 - ConfigManager - DEBUG - Configuración 'distraction.enable_night_mode' no encontrada, usando default: True
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.enable_night_mode' no encontrada, usando default: True
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.enable_optimization' no encontrada, usando default: True
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.processing_interval' no encontrada, usando default: 1
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.roi_enabled' no encontrada, usando default: False
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.roi_scale_factor' no encontrada, usando default: 0.6
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.yolo_input_size' no encontrada, usando default: 416
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.nms_threshold' no encontrada, usando default: 0.5
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.max_detections' no encontrada, usando default: 10
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.memory_optimization' no encontrada, usando default: False
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.frame_skip_threshold' no encontrada, usando default: 3
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.enable_prediction_cache' no encontrada, usando default: True
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.cache_size' no encontrada, usando default: 5
+2025-06-05 03:18:37,581 - ConfigManager - DEBUG - Configuración 'behavior.similarity_threshold' no encontrada, usando default: 0.8
+2025-06-05 03:18:37,581 - AlarmModule - INFO - Módulo de audio inicializado
+2025-06-05 03:18:37,601 - MainSystem - INFO - Sistema de seguridad optimizado iniciado
+2025-06-05 03:18:37,601 - MainSystem - INFO - Inicializando módulos del sistema
+2025-06-05 03:18:37,601 - CameraModule - INFO - Inicializando cámara...
+2025-06-05 03:18:37,831 - CameraModule - INFO - Configuración de cámara aplicada
+2025-06-05 03:18:37,831 - CameraModule - INFO - Calentando cámara por 1 segundos...
+2025-06-05 03:18:38,905 - CameraModule - INFO - Cámara inicializada: 1280x720 @ 30.0fps
+2025-06-05 03:18:38,905 - CameraModule - INFO - Aplicando optimizaciones para desarrollo...
+2025-06-05 03:18:38,908 - FaceRecognitionModule - INFO - Operadores cargados: 1
+2025-06-05 03:18:39,745 - AlarmModule - INFO - Módulo de audio inicializado
+2025-06-05 03:18:39,756 - CameraModule - WARNING - FPS bajo detectado: 0.3/15
+2025-06-05 03:18:39,756 - CameraModule - INFO - Aplicando optimizaciones para desarrollo...
+2025-06-05 03:18:41,944 - MainSystem - INFO - Deteniendo sistema optimizado
+2025-06-05 03:18:41,979 - CameraModule - INFO - Cámara liberada

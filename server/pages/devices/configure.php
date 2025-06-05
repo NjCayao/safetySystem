@@ -943,3 +943,10 @@ function showNotification(type, message) {
     border: none;
 }
 </style>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/device-config.js"></script>
+<script>
+// Pasar reglas de validación y configuración por defecto desde PHP
+window.validationRules = <?php echo json_encode($validation_rules); ?>;
+window.defaultConfig = <?php echo json_encode(DeviceConfigManager::getDefaultConfig()); ?>;
+</script>
