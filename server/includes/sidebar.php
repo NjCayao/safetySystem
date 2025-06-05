@@ -123,7 +123,7 @@ if (function_exists('db_fetch_one')) {
             <!-- Lista de Dispositivos -->
             <li class="nav-item">
               <a href="<?php echo BASE_URL; ?>/pages/devices/index.php" class="nav-link <?php echo ($currentPage == 'index.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
-                <i class="fas fa-list nav-icon"></i>
+                <i class="far fa-circle nav-icon fa-xs"></i>
                 <p>Lista de Dispositivos</p>
               </a>
             </li>
@@ -131,7 +131,7 @@ if (function_exists('db_fetch_one')) {
             <!-- Nuevo Dispositivo -->
             <li class="nav-item">
               <a href="<?php echo BASE_URL; ?>/pages/devices/create.php" class="nav-link <?php echo ($currentPage == 'create.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
-                <i class="fas fa-plus nav-icon"></i>
+                <i class="far fa-circle nav-icon fa-xs"></i>
                 <p>Nuevo Dispositivo</p>
               </a>
             </li>
@@ -139,7 +139,7 @@ if (function_exists('db_fetch_one')) {
             <!-- 🆕 NUEVO: Gestión de Configuraciones -->
             <li class="nav-item">
               <a href="<?php echo BASE_URL; ?>/pages/devices/config.php" class="nav-link <?php echo ($currentPage == 'config.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
-                <i class="fas fa-cogs nav-icon"></i>
+                <i class="far fa-circle nav-icon fa-xs"></i>
                 <p>
                   Gestión de Configuraciones
                   <?php if ($pendingConfigs > 0): ?>
@@ -152,7 +152,7 @@ if (function_exists('db_fetch_one')) {
             <!-- 🆕 NUEVO: Estado en Tiempo Real -->
             <li class="nav-item">
               <a href="<?php echo BASE_URL; ?>/pages/devices/status.php" class="nav-link <?php echo ($currentPage == 'status.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
-                <i class="fas fa-wifi nav-icon"></i>
+                <i class="far fa-circle nav-icon fa-xs"></i>
                 <p>
                   Estado en Tiempo Real
                   <?php if ($offlineDevices > 0): ?>
@@ -165,7 +165,7 @@ if (function_exists('db_fetch_one')) {
             <!-- 🆕 NUEVO: Historial de Configuraciones -->
             <li class="nav-item">
               <a href="<?php echo BASE_URL; ?>/pages/devices/history.php" class="nav-link <?php echo ($currentPage == 'history.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
-                <i class="fas fa-history nav-icon"></i>
+                <i class="far fa-circle nav-icon fa-xs"></i>
                 <p>Historial de Configuraciones</p>
               </a>
             </li>
@@ -174,7 +174,7 @@ if (function_exists('db_fetch_one')) {
             <?php if (isset($_SESSION['user_id']) && ($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'supervisor')): ?>
             <li class="nav-item">
               <a href="<?php echo BASE_URL; ?>/pages/devices/profiles.php" class="nav-link <?php echo ($currentPage == 'profiles.php' && $currentDir == 'devices') ? 'active' : ''; ?>">
-                <i class="fas fa-layer-group nav-icon"></i>
+                <i class="far fa-circle nav-icon fa-xs"></i>
                 <p>Perfiles de Configuración</p>
               </a>
             </li>
