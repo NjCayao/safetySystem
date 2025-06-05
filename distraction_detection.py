@@ -6,43 +6,87 @@ import numpy as np
 from scipy.spatial import distance
 from collections import deque
 
+# 🆕 NUEVO: Importar sistema de configuración
+try:
+    from config.config_manager import get_config, has_gui
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    print("Sistema de configuración no disponible para DistractionDetector, usando valores por defecto")
+
 class DistractionDetector:
     def __init__(self):
         """Inicializa el detector de distracciones con configuración centralizada"""
         
-        # ===== CONFIGURACIÓN CENTRALIZADA (MODIFICABLE DESDE PANEL WEB) =====
-        self.config = {
-            # Umbrales de rotación
-            'rotation_threshold_day': 2.6,      # Umbral día
-            'rotation_threshold_night': 2.8,    # Umbral noche
-            'extreme_rotation_threshold': 2.5,  # Umbral giros extremos
+        # 🆕 NUEVO: Cargar configuración externa (con fallbacks seguros)
+        if CONFIG_AVAILABLE:
+            # ===== CONFIGURACIÓN DESDE ARCHIVOS YAML =====
+            self.config = {
+                # Umbrales de rotación
+                'rotation_threshold_day': get_config('distraction.rotation_threshold_day', 2.6),
+                'rotation_threshold_night': get_config('distraction.rotation_threshold_night', 2.8),
+                'extreme_rotation_threshold': get_config('distraction.extreme_rotation_threshold', 2.5),
+                
+                # Temporización de alertas (en segundos)
+                'level1_time': get_config('distraction.level1_time', 3),
+                'level2_time': get_config('distraction.level2_time', 5),
+                
+                # Sensibilidad y detección
+                'visibility_threshold': get_config('distraction.visibility_threshold', 15),
+                'frames_without_face_limit': get_config('distraction.frames_without_face_limit', 5),
+                'confidence_threshold': get_config('distraction.confidence_threshold', 0.7),
+                
+                # Modo nocturno
+                'night_mode_threshold': get_config('distraction.night_mode_threshold', 50),
+                'enable_night_mode': get_config('distraction.enable_night_mode', True),
+                
+                # Buffer y ventanas de tiempo
+                'prediction_buffer_size': get_config('distraction.prediction_buffer_size', 10),
+                'distraction_window': get_config('distraction.distraction_window', 600),
+                'min_frames_for_reset': get_config('distraction.min_frames_for_reset', 10),
+                
+                # Control de audio
+                'audio_enabled': get_config('distraction.audio_enabled', True),
+                'level1_volume': get_config('distraction.level1_volume', 0.8),
+                'level2_volume': get_config('distraction.level2_volume', 1.0),
+                
+                # FPS de la cámara para cálculos
+                'camera_fps': get_config('distraction.camera_fps', 4)
+            }
             
-            # Temporización de alertas (en segundos)
-            'level1_time': 3,  # Tiempo para primer nivel
-            'level2_time': 5,  # Tiempo para segundo nivel
+            # 🆕 NUEVO: Configuración de GUI
+            self.show_gui = has_gui()
             
-            # Sensibilidad y detección
-            'visibility_threshold': 15,  # Píxeles mínimos de visibilidad
-            'frames_without_face_limit': 5,  # Frames sin cara antes de asumir giro extremo
-            'confidence_threshold': 0.7,  # Umbral de confianza
-            
-            # Modo nocturno
-            'night_mode_threshold': 50,  # Umbral luz para modo nocturno (0-255)
-            'enable_night_mode': True,   # Habilitar detección automática noche
-            
-            # Buffer y ventanas de tiempo
-            'prediction_buffer_size': 10,  # Tamaño del buffer de predicciones
-            'distraction_window': 600,     # Ventana de 10 minutos
-            'min_frames_for_reset': 10,    # Frames mínimos antes de resetear
-            
-            # Control de audio
-            'audio_enabled': True,         # Habilitar/deshabilitar audio
-            'level1_volume': 0.8,          # Volumen nivel 1
-            'level2_volume': 1.0,          # Volumen nivel 2
-            
-            # FPS de la cámara
-            'camera_fps': 4              # Para cálculos de temporización
-        }
+            print(f"✅ DistractionDetector - Configuración cargada:")
+            print(f"   - Umbral rotación día: {self.config['rotation_threshold_day']}")
+            print(f"   - Umbral rotación noche: {self.config['rotation_threshold_night']}")
+            print(f"   - Tiempo nivel 1: {self.config['level1_time']}s")
+            print(f"   - Tiempo nivel 2: {self.config['level2_time']}s")
+            print(f"   - GUI: {self.show_gui}")
+            print(f"   - Audio: {self.config['audio_enabled']}")
+        else:
+            # ✅ FALLBACK: Configuración original si no hay sistema de config
+            self.config = {
+                'rotation_threshold_day': 2.6,
+                'rotation_threshold_night': 2.8,
+                'extreme_rotation_threshold': 2.5,
+                'level1_time': 3,
+                'level2_time': 5,
+                'visibility_threshold': 15,
+                'frames_without_face_limit': 5,
+                'confidence_threshold': 0.7,
+                'night_mode_threshold': 50,
+                'enable_night_mode': True,
+                'prediction_buffer_size': 10,
+                'distraction_window': 600,
+                'min_frames_for_reset': 10,
+                'audio_enabled': True,
+                'level1_volume': 0.8,
+                'level2_volume': 1.0,
+                'camera_fps': 4
+            }
+            self.show_gui = True  # Default para compatibilidad
+            print("⚠️ DistractionDetector usando configuración por defecto")
         
         # Calcular frames basados en configuración
         self.level1_threshold = int(self.config['level1_time'] * self.config['camera_fps'])
@@ -77,6 +121,9 @@ class DistractionDetector:
         self.last_detection_time = 0       
         self.last_metrics = {}             
         
+        # Para logs en modo headless
+        self._last_log_time = 0
+        
         print("=== Detector de Distracciones - Configuración Inicial ===")
         print(f"Tiempo Nivel 1: {self.config['level1_time']} segundos")
         print(f"Tiempo Nivel 2: {self.config['level2_time']} segundos")
@@ -92,9 +139,9 @@ class DistractionDetector:
         self.level2_threshold = int(self.config['level2_time'] * self.config['camera_fps'])
         
         # Actualizar volúmenes de audio
-        if self.level1_sound:
+        if hasattr(self, 'level1_sound') and self.level1_sound:
             self.level1_sound.set_volume(self.config['level1_volume'])
-        if self.level2_sound:
+        if hasattr(self, 'level2_sound') and self.level2_sound:
             self.level2_sound.set_volume(self.config['level2_volume'])
             
         print("Configuración actualizada desde panel web")
@@ -113,24 +160,32 @@ class DistractionDetector:
             
             script_dir = os.path.dirname(os.path.abspath(__file__))
             
+            # 🆕 NUEVO: Archivos de audio configurables
+            if CONFIG_AVAILABLE:
+                audio_level1 = get_config('audio.files.vadelante1', 'vadelante1.mp3')
+                audio_level2 = get_config('audio.files.distraction', 'distraction.mp3')
+            else:
+                audio_level1 = 'vadelante1.mp3'
+                audio_level2 = 'distraction.mp3'
+            
             # Cargar audio nivel 1
-            audio_path_1 = os.path.join(script_dir, "audio", "vadelante1.mp3")
+            audio_path_1 = os.path.join(script_dir, "audio", audio_level1)
             if os.path.exists(audio_path_1):
                 self.level1_sound = pygame.mixer.Sound(audio_path_1)
                 self.level1_sound.set_volume(self.config['level1_volume'])
                 print(f"✅ Audio nivel 1 cargado: {audio_path_1}")
             else:
-                print(f"❌ ERROR: No se encontró vadelante1.mp3")
+                print(f"❌ ERROR: No se encontró {audio_level1}")
                 self.level1_sound = None
             
             # Cargar audio nivel 2
-            audio_path_2 = os.path.join(script_dir, "audio", "distraction.mp3")
+            audio_path_2 = os.path.join(script_dir, "audio", audio_level2)
             if os.path.exists(audio_path_2):
                 self.level2_sound = pygame.mixer.Sound(audio_path_2)
                 self.level2_sound.set_volume(self.config['level2_volume'])
                 print(f"✅ Audio nivel 2 cargado: {audio_path_2}")
             else:
-                print(f"❌ ERROR: No se encontró distraction.mp3")
+                print(f"❌ ERROR: No se encontró {audio_level2}")
                 self.level2_sound = None
                     
         except Exception as e:
@@ -314,8 +369,15 @@ class DistractionDetector:
         # Verificar múltiples distracciones
         multiple_distractions = len(self.distraction_times) >= 3
         
-        # Dibujar visualización
-        self._draw_enhanced_visualization(frame, is_distracted)
+        # 🆕 NUEVO: Dibujar visualización solo si GUI está habilitada
+        if self.show_gui:
+            self._draw_enhanced_visualization(frame, is_distracted)
+        else:
+            # En modo headless, log periódico
+            if current_time - self._last_log_time > 10:  # Log cada 10 segundos
+                mode_str = "NOCHE" if self.is_night_mode else "DÍA"
+                print(f"📊 Distracción: {self.direction} | Confianza: {self.detection_confidence:.2f} | Nivel: {self.current_alert_level} | Modo: {mode_str} | Total: {len(self.distraction_times)}/3")
+                self._last_log_time = current_time
         
         return is_distracted, multiple_distractions
     

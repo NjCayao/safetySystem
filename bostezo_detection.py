@@ -6,59 +6,118 @@ from collections import deque
 from scipy.spatial import distance
 import pygame
 
+# 🆕 NUEVO: Importar sistema de configuración
+try:
+    from config.config_manager import get_config, has_gui
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    print("Sistema de configuración no disponible para BostezosDetector, usando valores por defecto")
+
 class BostezosDetector:
     def __init__(self):
         """Inicializa el detector de bostezos"""
         
-        # ===== CONFIGURACIÓN PRINCIPAL (Variables para panel web) =====
+        # 🆕 NUEVO: Cargar configuración externa (con fallbacks seguros)
+        if CONFIG_AVAILABLE:
+            # === CONFIGURACIÓN DESDE ARCHIVOS YAML ===
+            
+            # Configuración de detección
+            self.config = {
+                'YAWN_THRESHOLD': get_config('yawn.mouth_threshold', 0.7),
+                'YAWN_DURATION_THRESHOLD': get_config('yawn.duration_threshold', 2.5),
+                'WINDOW_SIZE': get_config('yawn.window_size', 600),
+                'FRAMES_TO_CONFIRM': get_config('yawn.frames_to_confirm', 3),
+                
+                # Configuración de alertas
+                'ALERT_COOLDOWN': get_config('yawn.alert_cooldown', 5.0),
+                'MAX_YAWNS_BEFORE_ALERT': get_config('yawn.max_yawns_before_alert', 3),
+                'REPORT_DELAY': get_config('yawn.report_delay', 2.0),
+                
+                # Configuración de modo nocturno/infrarrojo
+                'ENABLE_NIGHT_MODE': get_config('yawn.enable_night_mode', True),
+                'NIGHT_MODE_THRESHOLD': get_config('yawn.night_mode_threshold', 50),
+                'NIGHT_ADJUSTMENT': get_config('yawn.night_adjustment', 0.05),
+                
+                # Configuración de calibración
+                'ENABLE_AUTO_CALIBRATION': get_config('yawn.enable_auto_calibration', True),
+                'CALIBRATION_FRAMES': get_config('yawn.calibration_frames', 60),
+                'CALIBRATION_FACTOR': get_config('yawn.calibration_factor', 0.4),
+                
+                # Configuración de audio
+                'ENABLE_SOUNDS': get_config('yawn.enable_sounds', True),
+                'AUDIO_FREQUENCY': get_config('yawn.audio_frequency', 44100),
+                'AUDIO_CHANNELS': get_config('yawn.audio_channels', 2),
+                'AUDIO_BUFFER': get_config('yawn.audio_buffer', 2048),
+                
+                # Configuración visual
+                'SHOW_DEBUG_INFO': get_config('yawn.show_debug_info', True),
+                'SHOW_MOUTH_CONTOUR': get_config('yawn.show_mouth_contour', True),
+                'SHOW_PROGRESS_BAR': get_config('yawn.show_progress_bar', True),
+                'SHOW_LIGHT_LEVEL': get_config('yawn.show_light_level', True),
+                'SHOW_MAR_VALUE': get_config('yawn.show_mar_value', True),
+                'SHOW_MODE_INDICATOR': get_config('yawn.show_mode_indicator', True),
+            }
+            
+            # 🆕 NUEVO: Configuración de GUI
+            self.show_gui = has_gui()
+            
+            print(f"✅ BostezosDetector - Configuración cargada:")
+            print(f"   - Umbral boca: {self.config['YAWN_THRESHOLD']}")
+            print(f"   - Duración mínima: {self.config['YAWN_DURATION_THRESHOLD']}s")
+            print(f"   - GUI: {self.show_gui}")
+            print(f"   - Audio: {self.config['ENABLE_SOUNDS']}")
+        else:
+            # ✅ FALLBACK: Configuración original si no hay sistema de config
+            self.config = {
+                'YAWN_THRESHOLD': 0.7,
+                'YAWN_DURATION_THRESHOLD': 2.5,
+                'WINDOW_SIZE': 600,
+                'FRAMES_TO_CONFIRM': 3,
+                'ALERT_COOLDOWN': 5.0,
+                'MAX_YAWNS_BEFORE_ALERT': 3,
+                'REPORT_DELAY': 2.0,
+                'ENABLE_NIGHT_MODE': True,
+                'NIGHT_MODE_THRESHOLD': 50,
+                'NIGHT_ADJUSTMENT': 0.05,
+                'ENABLE_AUTO_CALIBRATION': True,
+                'CALIBRATION_FRAMES': 60,
+                'CALIBRATION_FACTOR': 0.4,
+                'ENABLE_SOUNDS': True,
+                'AUDIO_FREQUENCY': 44100,
+                'AUDIO_CHANNELS': 2,
+                'AUDIO_BUFFER': 2048,
+                'SHOW_DEBUG_INFO': True,
+                'SHOW_MOUTH_CONTOUR': True,
+                'SHOW_PROGRESS_BAR': True,
+                'SHOW_LIGHT_LEVEL': True,
+                'SHOW_MAR_VALUE': True,
+                'SHOW_MODE_INDICATOR': True,
+            }
+            self.show_gui = True  # Default para compatibilidad
+            print("⚠️ BostezosDetector usando configuración por defecto")
         
-        # --- Configuración de Detección ---
-        self.config = {
-            # Umbrales de detección
-            'YAWN_THRESHOLD': 0.7,              # Umbral para considerar boca abierta (0.3-0.7)
-            'YAWN_DURATION_THRESHOLD': 2.5,     # Duración mínima del bostezo en segundos
-            'WINDOW_SIZE': 600,                 # Ventana de tiempo en segundos (10 minutos)
-            'FRAMES_TO_CONFIRM': 3,             # Frames consecutivos para confirmar estado
-            
-            # Configuración de alertas
-            'ALERT_COOLDOWN': 5.0,              # Tiempo entre alertas en segundos
-            'MAX_YAWNS_BEFORE_ALERT': 3,        # Número de bostezos para alerta múltiple
-            'REPORT_DELAY': 2.0,                # Tiempo para mantener estado de reporte
-            
-            # Configuración de modo nocturno/infrarrojo
-            'ENABLE_NIGHT_MODE': True,          # Habilitar detección automática de modo nocturno
-            'NIGHT_MODE_THRESHOLD': 50,         # Umbral de luz para modo nocturno (0-255)
-            'NIGHT_ADJUSTMENT': 0.05,           # Ajuste de umbral en modo nocturno
-            
-            # Configuración de calibración
-            'ENABLE_AUTO_CALIBRATION': True,    # Habilitar calibración automática
-            'CALIBRATION_FRAMES': 60,           # Frames para calibración inicial
-            'CALIBRATION_FACTOR': 0.4,          # Factor de calibración (0.3-0.5)
-            
-            # Configuración de audio
-            'ENABLE_SOUNDS': True,              # Habilitar/deshabilitar todos los sonidos
-            'AUDIO_FREQUENCY': 44100,           # Frecuencia de audio
-            'AUDIO_CHANNELS': 2,                # Canales de audio
-            'AUDIO_BUFFER': 2048,               # Buffer de audio
-            
-            # Configuración visual
-            'SHOW_DEBUG_INFO': True,            # Mostrar información de debug en pantalla
-            'SHOW_MOUTH_CONTOUR': True,         # Mostrar contorno de la boca
-            'SHOW_PROGRESS_BAR': True,          # Mostrar barra de progreso
-            'SHOW_LIGHT_LEVEL': True,           # Mostrar nivel de luz
-            'SHOW_MAR_VALUE': True,             # Mostrar valor MAR
-            'SHOW_MODE_INDICATOR': True,        # Mostrar indicador de modo (día/noche)
-        }
+        # 🆕 NUEVO: Archivos de audio configurables
+        if CONFIG_AVAILABLE:
+            self.audio_files = {
+                'yawn_1': get_config('audio.files.bostezo1', 'bostezo1.mp3'),
+                'yawn_2': get_config('audio.files.bostezo2', 'bostezo2.mp3'),
+                'yawn_3': get_config('audio.files.bostezo3', 'bostezo3.mp3'),
+                'fallback': get_config('audio.files.fallback', 'alarma.mp3')
+            }
+        else:
+            self.audio_files = {
+                'yawn_1': 'bostezo1.mp3',
+                'yawn_2': 'bostezo2.mp3',
+                'yawn_3': 'bostezo3.mp3',
+                'fallback': 'alarma.mp3'
+            }
         
-        # --- Rutas de archivos de audio ---
-        self.audio_files = {
-            'yawn_1': 'bostezo1.mp3',
-            'yawn_2': 'bostezo2.mp3',
-            'yawn_3': 'bostezo3.mp3',
-            'fallback': 'alarma.mp3'
-        }
+        # 🆕 NUEVO: Colores configurables para visualización (BGR)
+        if CONFIG_AVAILABLE:
+            # Podríamos hacer estos configurables también, pero por ahora usar defaults
+            pass
         
-        # --- Colores para visualización (BGR) ---
         self.colors = {
             'mouth_normal': (0, 255, 0),      # Verde
             'mouth_yawning': (0, 0, 255),     # Rojo
@@ -80,7 +139,7 @@ class BostezosDetector:
             'yawn_count': (10, 0.65),        # 65% desde arriba
         }
         
-        # ===== VARIABLES DE ESTADO INTERNO =====
+        # ===== VARIABLES DE ESTADO INTERNO (IGUALES QUE ANTES) =====
         
         # Estado de detección
         self.yawn_times = deque()
@@ -119,6 +178,7 @@ class BostezosDetector:
         print(f"Umbral de luz para modo nocturno: {self.config['NIGHT_MODE_THRESHOLD']}")
         print(f"Ajuste de umbral en modo nocturno: {self.config['NIGHT_ADJUSTMENT']}")
         print(f"Compatible con cámaras infrarrojas: Sí")
+        print(f"GUI habilitada: {self.show_gui}")
     
     def update_config(self, new_config):
         """Actualiza la configuración desde el panel web"""
@@ -383,8 +443,19 @@ class BostezosDetector:
         else:
             multiple_yawns = len(self.yawn_times) >= self.config['MAX_YAWNS_BEFORE_ALERT']
         
-        # Dibujar información
-        display_frame = self._draw_yawn_info(display_frame, mouth_points, mar, current_threshold, is_yawning)
+        # 🆕 NUEVO: Dibujar información solo si GUI está habilitada
+        if self.show_gui:
+            display_frame = self._draw_yawn_info(display_frame, mouth_points, mar, current_threshold, is_yawning)
+        else:
+            # En modo headless, log periódico
+            if hasattr(self, '_last_log_time'):
+                if current_time - self._last_log_time > 10:  # Log cada 10 segundos
+                    status = "BOSTEZANDO" if is_yawning else "Normal"
+                    mode_str = "NOCHE" if self.is_night_mode else "DÍA"
+                    print(f"📊 Bostezos: {status} | MAR: {mar:.2f} | Umbral: {current_threshold:.2f} | Modo: {mode_str} | Contador: {len(self.yawn_times)}/{self.config['MAX_YAWNS_BEFORE_ALERT']}")
+                    self._last_log_time = current_time
+            else:
+                self._last_log_time = current_time
         
         return is_yawning, multiple_yawns
     

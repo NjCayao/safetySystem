@@ -6,6 +6,15 @@ import traceback
 import dlib
 from datetime import datetime
 
+# 🆕 NUEVO: Importar sistema de configuración
+try:
+    from config.config_manager import get_config, has_gui, is_development
+    CONFIG_AVAILABLE = True
+    print("✅ Sistema de configuración cargado")
+except ImportError:
+    CONFIG_AVAILABLE = False
+    print("⚠️ Sistema de configuración no disponible, usando valores por defecto")
+
 # Importar módulos individuales
 from camera_module import CameraModule
 from face_recognition_module import FaceRecognitionModule
@@ -27,10 +36,17 @@ LOGS_DIR = os.path.join(BASE_DIR, "logs")
 for directory in [OPERATORS_DIR, MODEL_DIR, AUDIO_DIR, REPORTS_DIR, LOGS_DIR]:
     os.makedirs(directory, exist_ok=True)
 
-# Configuración de logging
+# 🆕 NUEVO: Configuración de logging con configuración externa
+if CONFIG_AVAILABLE:
+    log_level = get_config('logging.level', 'INFO')
+    log_format = get_config('logging.format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+else:
+    log_level = 'INFO'
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=getattr(logging, log_level.upper()),
+    format=log_format,
     filename=os.path.join(LOGS_DIR, f'safety_system_{datetime.now().strftime("%Y%m%d")}.log'),
     filemode='a'
 )
@@ -41,6 +57,23 @@ class SafetySystem:
         """Inicializa el sistema de seguridad modular"""
         self.logger = logging.getLogger('SafetySystem')
         self.logger.info("Iniciando sistema de seguridad modular")
+
+        # 🆕 NUEVO: Cargar configuración
+        if CONFIG_AVAILABLE:
+            self.show_gui = has_gui()
+            self.is_dev_mode = is_development()
+            self.alert_cooldown = get_config('alerts.cooldown_time', 5)
+            
+            print(f"🔧 Configuración cargada:")
+            print(f"   - Modo: {'DESARROLLO' if self.is_dev_mode else 'PRODUCCIÓN'}")
+            print(f"   - GUI: {'HABILITADA' if self.show_gui else 'DESHABILITADA (headless)'}")
+            print(f"   - Cooldown alertas: {self.alert_cooldown}s")
+        else:
+            # ✅ FALLBACK: Valores por defecto
+            self.show_gui = True
+            self.is_dev_mode = True
+            self.alert_cooldown = 5
+            print("⚠️ Usando configuración por defecto")
 
         # Definir el directorio de reportes
         self.reports_dir = REPORTS_DIR
@@ -67,7 +100,6 @@ class SafetySystem:
             "smoking_pattern": 0,
             "smoking_7s": 0
         }
-        self.alert_cooldown = 5  # Segundos entre alertas del mismo tipo
         
         # Estado de comportamientos (para manejar audio)
         self.behavior_audio_played = {
@@ -98,9 +130,13 @@ class SafetySystem:
         
         self.alarm = AlarmModule(AUDIO_DIR)
         
-        # Configurar ventana
-        cv2.namedWindow("Sistema de Seguridad", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Sistema de Seguridad", 800, 600)
+        # 🆕 NUEVO: Configurar ventana solo si GUI está habilitada
+        if self.show_gui:
+            cv2.namedWindow("Sistema de Seguridad", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("Sistema de Seguridad", 800, 600)
+            print("🖥️ Ventana gráfica configurada")
+        else:
+            print("🖥️ Modo headless - Sin interfaz gráfica")
     
     def initialize(self):
         """Inicializa todos los módulos del sistema"""
@@ -241,6 +277,15 @@ class SafetySystem:
         prev_time = time.time()
         frame_count = 0
         
+        # 🆕 NUEVO: Mostrar información de inicio
+        print(f"\n🚀 SISTEMA INICIADO EN MODO {'DESARROLLO' if self.is_dev_mode else 'PRODUCCIÓN'}")
+        print(f"   GUI: {'HABILITADA' if self.show_gui else 'DESHABILITADA'}")
+        if self.show_gui:
+            print("   Presiona 'q' para salir")
+        else:
+            print("   Presiona Ctrl+C para salir")
+        print("-" * 50)
+        
         try:
             while self.is_running:
                 try:
@@ -262,9 +307,14 @@ class SafetySystem:
                     else:
                         fps = 0
                     
-                    # Mostrar FPS
-                    cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                    # 🆕 NUEVO: Mostrar FPS solo si GUI está habilitada
+                    if self.show_gui:
+                        cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                    else:
+                        # En modo headless, log FPS cada 30 segundos
+                        if frame_count % 300 == 0:  # Asumiendo ~10 FPS en Pi
+                            print(f"📊 FPS: {fps:.2f} | Frames procesados: {frame_count}")
                     
                     # Reconocimiento facial
                     if self.current_operator is None:
@@ -272,6 +322,7 @@ class SafetySystem:
                         if operator:
                             logger.info(f"Operador reconocido: {operator['name']} (ID: {operator['id']})")
                             self.current_operator = operator
+                            print(f"👤 Operador reconocido: {operator['name']}")
                             
                             # Saludar al operador (solo si está habilitado el audio del sistema)
                             if self.play_system_audio:
@@ -283,6 +334,7 @@ class SafetySystem:
                             if operator and operator['id'] != self.current_operator['id']:
                                 logger.warning(f"Cambio de operador detectado: {operator['name']}")
                                 self.current_operator = operator
+                                print(f"🔄 Cambio de operador: {operator['name']}")
                                 
                                 # Saludar al nuevo operador (solo si está habilitado el audio del sistema)
                                 if self.play_system_audio:
@@ -316,6 +368,7 @@ class SafetySystem:
                             # Verificar cooldown
                             if current_time - self.last_alert_times.get("fatigue", 0) > self.alert_cooldown:
                                 logger.warning(f"Fatiga detectada para operador {self.current_operator['name']}")
+                                print(f"⚠️ FATIGA DETECTADA - {self.current_operator['name']}")
                                 
                                 # Reproducir alarma (solo si está habilitado el audio del sistema)
                                 if self.play_system_audio:
@@ -332,6 +385,7 @@ class SafetySystem:
                             # Verificar cooldown
                             if current_time - self.last_alert_times.get("multiple_fatigue", 0) > self.alert_cooldown:
                                 logger.warning(f"Múltiples episodios de fatiga para operador {self.current_operator['name']}")
+                                print(f"🚨 MÚLTIPLE FATIGA - {self.current_operator['name']}")
                                 
                                 # Reproducir alarma (solo si está habilitado el audio del sistema)
                                 if self.play_system_audio:
@@ -348,6 +402,7 @@ class SafetySystem:
                             # Verificar cooldown
                             if current_time - self.last_alert_times.get("yawn", 0) > self.alert_cooldown:
                                 logger.warning(f"Bostezo detectado para operador {self.current_operator['name']}")
+                                print(f"🥱 BOSTEZO - {self.current_operator['name']}")
                                 
                                 # Generar reporte
                                 self.generate_report(frame, "yawn", self.current_operator)
@@ -360,6 +415,7 @@ class SafetySystem:
                             # Verificar cooldown
                             if current_time - self.last_alert_times.get("multiple_yawns", 0) > self.alert_cooldown:
                                 logger.warning(f"Múltiples bostezos detectados para operador {self.current_operator['name']}")
+                                print(f"🥱🥱 MÚLTIPLES BOSTEZOS - {self.current_operator['name']}")
                                 
                                 # Generar reporte
                                 self.generate_report(frame, "yawn", self.current_operator)
@@ -377,6 +433,7 @@ class SafetySystem:
                             if current_level == 1 and current_time != self.last_alert_times.get("distraction_level1", 0):
                                 if current_time - self.last_alert_times.get("distraction", 0) > self.alert_cooldown:
                                     logger.warning(f"Distracción nivel 1 detectada para operador {self.current_operator['name']}")
+                                    print(f"👀 DISTRACCIÓN NIVEL 1 - {self.current_operator['name']}")
                                     
                                     details = {
                                         'direction': distraction_status['direction'],
@@ -392,6 +449,7 @@ class SafetySystem:
                             elif current_level == 2 and current_time != self.last_alert_times.get("distraction_level2", 0):
                                 if current_time - self.last_alert_times.get("distraction", 0) > self.alert_cooldown:
                                     logger.warning(f"Distracción nivel 2 detectada para operador {self.current_operator['name']}")
+                                    print(f"👀👀 DISTRACCIÓN NIVEL 2 - {self.current_operator['name']}")
                                     
                                     details = {
                                         'direction': distraction_status['direction'],
@@ -408,6 +466,7 @@ class SafetySystem:
                             # Verificar cooldown
                             if current_time - self.last_alert_times.get("multiple_distractions", 0) > self.alert_cooldown:
                                 logger.warning(f"Múltiples distracciones detectadas para operador {self.current_operator['name']}")
+                                print(f"👀🔄 MÚLTIPLES DISTRACCIONES - {self.current_operator['name']}")
                                 
                                 # Obtener información adicional
                                 distraction_status = self.distraction_detector.get_status()
@@ -433,6 +492,7 @@ class SafetySystem:
                             # Verificar cooldown
                             if current_time - self.last_alert_times.get(alert_type, 0) > self.alert_cooldown:
                                 logger.warning(f"Alerta de comportamiento: {alert_type} - {behavior}")
+                                print(f"📱 COMPORTAMIENTO PELIGROSO: {behavior.upper()} - {self.current_operator['name']}")
                                 
                                 # Preparar detalles para el reporte
                                 details = {
@@ -456,12 +516,17 @@ class SafetySystem:
                                 if '7s' in alert_type:
                                     frame = self.behavior_detector.draw_behavior_alert(frame, behavior, 1.0)
                     
-                    # Mostrar frame
-                    cv2.imshow("Sistema de Seguridad", frame)
-                    
-                    # Salir si se presiona 'q'
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
+                    # 🆕 NUEVO: Mostrar frame solo si GUI está habilitada
+                    if self.show_gui:
+                        cv2.imshow("Sistema de Seguridad", frame)
+                        
+                        # Salir si se presiona 'q'
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            print("👋 Saliendo del sistema...")
+                            break
+                    else:
+                        # En modo headless, pequeña pausa para no saturar CPU
+                        time.sleep(0.1)
                     
                 except Exception as e:
                     logger.error(f"Error en bucle principal: {str(e)}")
@@ -470,15 +535,22 @@ class SafetySystem:
             
         except KeyboardInterrupt:
             logger.info("Sistema detenido por el usuario")
+            print("\n👋 Sistema detenido por el usuario")
         finally:
             self.stop()
     
     def stop(self):
         """Detiene el sistema y libera recursos"""
         logger.info("Deteniendo sistema")
+        print("🛑 Deteniendo sistema...")
         self.is_running = False
         self.camera.release()
-        cv2.destroyAllWindows()
+        
+        # 🆕 NUEVO: Solo destruir ventanas si GUI estaba habilitada
+        if self.show_gui:
+            cv2.destroyAllWindows()
+        
+        print("✅ Sistema detenido correctamente")
 
 if __name__ == "__main__":
     try:

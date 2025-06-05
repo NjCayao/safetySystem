@@ -24,6 +24,11 @@ safety_system/
 ├── operator-photo/
 ├── operators/
 ├── reports/
+├── config/                     # 🆕 NUEVO
+│   ├── config_manager.py       # Sistema de configuración inteligente
+│   ├── default.yaml           # Configuración por defecto (segura)
+│   ├── development.yaml       # Para tu Windows (con GUI)
+│   └── production.yaml        # Para Raspberry Pi (sin GUI)
 ├── client/
     ├── config/
     │   ├── config.ini        # Configuración general
@@ -204,6 +209,35 @@ safety_system/
 |__ sync_integrator.py
 |__ main_with_sync.py
 |__ SYNC_INTEGRATION_GUIDE.md
+
+# RASPBERRY 
+nombre del Pi raspberrypi
+Usuario: SafetySystem
+Contraseña: Thenilfer1414
+# para conectarse con ssh
+ssh SafetySystem@raspberrypi.local
+# para subir o el proyecto remotamente -> desde cmd o powercell
+scp "C:\xampp\htdocs\safety_system\proyecto.zip" SafetySystem@raspberrypi.local:/home/SafetySystem/
+
+# en el Pi
+mkdir ~/safety_system = crear una carpeta para extrael el proyecto 
+cd ~/safety_system  = entrar a la carpeta
+mv ~/proyecto.zip . = mover el zip a la carpeta 
+unzip proyecto.zip  = extraer el proyecto 
+rm proyecto.zip = eliminar el zip 
+# ✅ Para correr el sistema:
+source ~/safety_env/bin/activate = crear el entorno virtual
+cd ~/safety_system = entrar al proyecto
+pip install -r requirements.txt  = instalar todos los requerimientos.
+pip install pygame = instalar la dependencia
+
+# ejecutar
+python3 main_system.py
+
+# COPIAR SOLO MAIN
+scp C:\xampp\htdocs\safety_system\main_system.py SafetySystem@raspberrypi.local:/home/SafetySystem/safety_system/
+
+
 
 
 

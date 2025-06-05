@@ -7,18 +7,57 @@ import dlib
 from scipy.spatial import distance
 import numpy as np
 
+# 🆕 NUEVO: Importar sistema de configuración
+try:
+    from config.config_manager import get_config, has_gui
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    print("Sistema de configuración no disponible, usando valores por defecto")
+
 class FatigueDetector:
     def __init__(self, model_path):
         """Inicializa el detector de fatiga con los archivos de audio disponibles"""
-        # Configuración de tiempos (en segundos)
-        self.EYE_CLOSED_THRESHOLD = 1.5  # 1.5 segundos exactos para considerar microsueño
-        self.WINDOW_SIZE = 600  # 10 minutos en segundos
-        self.ALARM_COOLDOWN = 5  # Tiempo mínimo entre alarmas
         
-        # Umbral EAR (Eye Aspect Ratio)
-        self.EAR_THRESHOLD = 0.25  # Umbral para ojos cerrados
-        self.EAR_NIGHT_ADJUSTMENT = 0.03  # Ajuste para modo nocturno (más permisivo)
+        # 🆕 NUEVO: Cargar configuración externa (con fallbacks seguros)
+        if CONFIG_AVAILABLE:
+            # Configuración de tiempos (en segundos)
+            self.EYE_CLOSED_THRESHOLD = get_config('fatigue.eye_closed_threshold', 1.5)
+            self.WINDOW_SIZE = get_config('fatigue.window_size', 600)
+            self.ALARM_COOLDOWN = get_config('fatigue.alarm_cooldown', 5)
+            
+            # Umbral EAR (Eye Aspect Ratio)
+            self.EAR_THRESHOLD = get_config('fatigue.ear_threshold', 0.25)
+            self.EAR_NIGHT_ADJUSTMENT = get_config('fatigue.ear_night_adjustment', 0.03)
+            
+            # Configuración de modo nocturno
+            self.night_mode_threshold = get_config('fatigue.night_mode_threshold', 50)
+            self.enable_night_mode = get_config('fatigue.enable_night_mode', True)
+            
+            # Configuración de suavizado
+            self.frames_to_confirm = get_config('fatigue.frames_to_confirm', 2)
+            self.calibration_period = get_config('fatigue.calibration_period', 30)
+            
+            # Configuración de GUI
+            self.show_gui = has_gui()
+            
+            print(f"✅ Configuración cargada - Umbral EAR: {self.EAR_THRESHOLD}, GUI: {self.show_gui}")
+        else:
+            # ✅ FALLBACK: Valores originales si no hay configuración
+            self.EYE_CLOSED_THRESHOLD = 1.5
+            self.WINDOW_SIZE = 600
+            self.ALARM_COOLDOWN = 5
+            self.EAR_THRESHOLD = 0.25
+            self.EAR_NIGHT_ADJUSTMENT = 0.03
+            self.night_mode_threshold = 50
+            self.enable_night_mode = True
+            self.frames_to_confirm = 2
+            self.calibration_period = 30
+            self.show_gui = True  # Default para compatibilidad
+            
+            print("⚠️ Usando configuración por defecto (hardcodeada)")
         
+        # ✅ RESTO DEL CÓDIGO ORIGINAL INTACTO
         # Estado del detector
         self.eyes_closed_duration = 0.0
         self.microsleeps = deque()  # Cola para manejar la ventana temporal
@@ -31,19 +70,16 @@ class FatigueDetector:
         # Para suavizar la detección
         self.closed_frames = 0
         self.open_frames = 0
-        self.frames_to_confirm = 2  # Frames necesarios para confirmar cambio de estado
         self.last_ear_values = deque(maxlen=3)  # Mantener últimos valores EAR
         
         # Valores mínimos y máximos de EAR observados (para calibración)
         self.min_ear_observed = 1.0
         self.max_ear_observed = 0.0
-        self.calibration_frames = 0
-        self.calibration_period = 30  # Calibrar durante primeros frames
+        self.calibration_frame_count = 0
         
         # Detección de condiciones de iluminación - NUEVO
         self.is_night_mode = False
         self.light_level = 0
-        self.night_mode_threshold = 50  # Umbral para determinar modo nocturno (0-255)
         
         # Configuración de modelos
         self.face_detector = dlib.get_frontal_face_detector()
@@ -109,7 +145,8 @@ class FatigueDetector:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
         # NUEVO: Detectar nivel de iluminación y determinar modo nocturno/diurno
-        self._detect_lighting_conditions(gray)
+        if self.enable_night_mode:
+            self._detect_lighting_conditions(gray)
         
         # NUEVO: Mejora de imagen basada en el modo actual (noche/día)
         enhanced_gray = self._enhance_image(gray)
@@ -120,8 +157,10 @@ class FatigueDetector:
         microsleep_detected = False
         critical_fatigue = False
         
-        # NUEVO: Dibujar indicador de modo (nocturno/diurno)
-        frame = self._draw_mode_indicator(frame)
+        # 🆕 NUEVO: Modo condicional para GUI
+        if self.show_gui:
+            # NUEVO: Dibujar indicador de modo (nocturno/diurno)
+            frame = self._draw_mode_indicator(frame)
         
         if not faces:
             # Si no hay rostro, restablecer estado
@@ -129,8 +168,15 @@ class FatigueDetector:
                 self.eyes_closed_start_time = None
                 self.eyes_closed_duration = 0
             
-            # Dibujar información
-            frame = self._draw_no_face_info(frame)
+            # 🆕 NUEVO: Solo dibujar si GUI está habilitada
+            if self.show_gui:
+                frame = self._draw_no_face_info(frame)
+            else:
+                # En modo headless, solo log
+                if current_time - self.last_status_time > 5:  # Log cada 5 segundos
+                    print("⚠️ No se detecta rostro")
+                    self.last_status_time = current_time
+            
             return False, False, frame
         
         landmarks = self.landmark_predictor(enhanced_gray, faces[0])
@@ -145,13 +191,13 @@ class FatigueDetector:
         ear = (ear_left + ear_right) / 2.0
         
         # Actualizar valores mínimos/máximos para calibración automática
-        if self.calibration_frames < self.calibration_period:
-            self.calibration_frames += 1
+        if self.calibration_frame_count < self.calibration_period:
+            self.calibration_frame_count += 1
             self.min_ear_observed = min(self.min_ear_observed, ear)
             self.max_ear_observed = max(self.max_ear_observed, ear)
             
             # Al final del periodo de calibración, ajustar umbral
-            if self.calibration_frames == self.calibration_period:
+            if self.calibration_frame_count == self.calibration_period:
                 range_ear = self.max_ear_observed - self.min_ear_observed
                 if range_ear > 0.1:  # Solo ajustar si hay suficiente variación
                     # Establecer umbral al 30% por encima del mínimo observado
@@ -214,8 +260,9 @@ class FatigueDetector:
                 # Activar alarmas inmediatamente (sin verificar cooldown para el primer frame)
                 self._trigger_alarms(current_time)
                 
-                # Añadir mensaje en pantalla                
-                self._add_display_message(f"¡MICROSUEÑO DETECTADO! ({len(self.microsleeps)}/3)", (0, 0, 255))
+                # 🆕 NUEVO: Solo agregar mensaje visual si GUI está habilitada
+                if self.show_gui:
+                    self._add_display_message(f"¡MICROSUEÑO DETECTADO! ({len(self.microsleeps)}/3)", (0, 0, 255))
                 
         elif confirmed_eyes_open:
             # Si los ojos estaban cerrados, reportar duración
@@ -234,11 +281,20 @@ class FatigueDetector:
         # Verificar si tenemos 3 o más microsueños (fatiga crítica)
         critical_fatigue = len(self.microsleeps) >= 3
         
-        # Dibujar información en el frame - MODIFICADO para pasar umbral actual
-        frame = self._draw_eye_info(frame, left_eye, right_eye, ear, avg_ear, current_threshold)
-        
-        # Dibujar mensajes en pantalla
-        frame = self._draw_display_messages(frame, current_time)
+        # 🆕 NUEVO: Solo dibujar información si GUI está habilitada
+        if self.show_gui:
+            # Dibujar información en el frame - MODIFICADO para pasar umbral actual
+            frame = self._draw_eye_info(frame, left_eye, right_eye, ear, avg_ear, current_threshold)
+            
+            # Dibujar mensajes en pantalla
+            frame = self._draw_display_messages(frame, current_time)
+        else:
+            # En modo headless, log periódico del estado
+            if current_time - self.last_status_time > 10:  # Log cada 10 segundos
+                status = "OJOS CERRADOS" if not eyes_open else "OJOS ABIERTOS"
+                mode_str = "NOCHE" if self.is_night_mode else "DÍA"
+                print(f"📊 Estado: {status} | EAR: {ear:.2f} | Umbral: {current_threshold:.2f} | Modo: {mode_str} | Microsueños: {len(self.microsleeps)}/3")
+                self.last_status_time = current_time
         
         return microsleep_detected, critical_fatigue, frame
     

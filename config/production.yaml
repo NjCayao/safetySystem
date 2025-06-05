@@ -1,0 +1,152 @@
+# config/production.yaml
+# Configuración específica para entorno de producción (Raspberry Pi)
+
+system:
+  enable_gui: false              # SIN interfaz gráfica
+  log_level: "INFO"              # Logs moderados para no llenar disco
+  debug_mode: false              # Sin debug en producción
+  performance_monitoring: true   # Importante monitorear en campo
+
+camera:
+  # Configuración optimizada para Raspberry Pi
+  fps: 4                         # FPS bajo para ahorrar CPU
+  width: 320                     # Resolución baja para mejor rendimiento
+  height: 240
+  
+  # Optimización para hardware limitado
+  use_threading: true            # Threading para mejor rendimiento
+  warmup_time: 3                 # Más tiempo de calentamiento en Pi
+  buffer_size: 1                 # Buffer mínimo para latencia baja
+
+fatigue:
+  # Umbrales optimizados para condiciones de campo
+  eye_closed_threshold: 1.5      # Valor probado y seguro
+  calibration_period: 60         # Calibración más larga para estabilidad
+  
+  # Configuración para campo
+  enable_night_mode: true        # Esencial para trabajo nocturno
+  night_mode_threshold: 40       # Más sensible para condiciones de campo
+
+yawn:
+  # Configuración conservadora para producción
+  duration_threshold: 2.5        # Valor estándar probado
+  max_yawns_before_alert: 3      # Valor conservador
+  
+  # Audio crítico en campo
+  enable_sounds: true
+
+distraction:
+  # Tiempos estándar para campo
+  level1_time: 3                 # Valores probados
+  level2_time: 5
+  
+  # Audio esencial
+  audio_enabled: true
+  level1_volume: 0.9             # Volumen alto para ruido de máquinas
+  level2_volume: 1.0
+
+behavior:
+  # Configuración conservadora para evitar falsos positivos
+  confidence_threshold: 0.4      # Valor equilibrado
+  phone_alert_threshold_1: 3     # Valores estándar
+  phone_alert_threshold_2: 7
+  
+  # Audio crítico
+  audio_enabled: true
+
+audio:
+  # Configuración para entorno industrial
+  volume: 1.0                    # Volumen máximo para superar ruido
+  enabled: true                  # CRÍTICO en producción
+
+sync:
+  # Configuración para conexión de campo (posiblemente inestable)
+  server_url: "https://tuservidor.com/safety_system"  # URL real del servidor
+  
+  # Configuración robusta para campo
+  auto_sync_interval: 300        # 5 minutos - balance entre actualización y ancho de banda
+  batch_size: 50                 # Lotes medianos para eficiencia
+  
+  # Timeouts más largos para conexiones lentas
+  connection_timeout: 15
+  read_timeout: 45
+  max_retries: 5                 # Más reintentos para conexiones inestables
+  retry_delay: 10
+
+logging:
+  # Logging optimizado para producción
+  level: "INFO"                  # No demasiado verbose
+  
+  # Rotación de logs para no llenar disco
+  file_max_size: 5242880         # 5MB máximo por archivo
+  file_backup_count: 3           # Máximo 3 archivos de backup
+  
+  # Logging específico por módulo
+  modules:
+    camera: "WARNING"            # Solo errores importantes
+    fatigue: "INFO"
+    behavior: "INFO"
+    sync: "INFO"
+
+alerts:
+  # Configuración conservadora para producción
+  cooldown_time: 5               # Tiempo estándar entre alertas
+
+reports:
+  # Configuración optimizada para almacenamiento limitado
+  image_quality: 75              # Menor calidad para ahorrar espacio
+  auto_cleanup: true             # IMPORTANTE: limpiar automáticamente
+  max_age_days: 30               # Mantener solo 30 días
+
+# Configuraciones específicas de producción
+production:
+  # Monitoreo del sistema
+  enable_system_monitoring: true
+  cpu_threshold: 80              # % CPU máximo antes de optimizar
+  memory_threshold: 80           # % memoria máxima
+  temperature_threshold: 70      # °C máxima antes de reducir rendimiento
+  
+  # Gestión de energía
+  enable_power_management: true
+  reduce_performance_on_low_battery: true
+  
+  # Conectividad
+  connection_types: ["ethernet", "wifi", "cellular"]
+  preferred_connection: "ethernet"
+  
+  # Recuperación automática
+  auto_restart_on_error: true
+  max_restart_attempts: 3
+  restart_delay: 30              # Segundos entre reintentos
+  
+  # Heartbeat al servidor
+  heartbeat_interval: 60         # Segundos entre heartbeats
+  heartbeat_timeout: 10
+  
+  # Configuración de almacenamiento
+  max_disk_usage: 80             # % máximo de uso de disco
+  cleanup_on_disk_full: true
+  
+  # Configuración de red
+  network_timeout: 30
+  enable_offline_mode: true      # CRÍTICO: funcionar sin internet
+  
+  # Seguridad
+  enable_encryption: true        # Encriptar comunicaciones
+  api_key_file: "/etc/safety_system/api.key"
+  
+  # Configuración específica de Raspberry Pi
+  raspberry_pi:
+    enable_hardware_pwm: false   # Desactivar PWM de hardware si no se usa
+    gpu_memory_split: 64         # MB para GPU (mínimo necesario)
+    disable_camera_led: true     # Desactivar LED de cámara
+    
+    # Optimizaciones de rendimiento
+    arm_freq: 1500               # Frecuencia ARM (si es estable)
+    gpu_freq: 500                # Frecuencia GPU
+    over_voltage: 2              # Solo si es necesario y estable
+    
+    # Configuración de cámara específica
+    camera_module: "usb"         # Tipo de cámara
+    camera_auto_exposure: true
+    camera_auto_white_balance: true
