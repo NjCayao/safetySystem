@@ -1,0 +1,10 @@
+Reporte de Seguridad - DISTRACTION
+Fecha y hora: 20250610_212933
+Operador: Operador: Nilson Cayao
+Frame procesado: 6002
+Nivel de optimización: 0
+Direction: IZQUIERDA
+Duration: 2
+Level: 1
+
+Acción recomendada: El operador debe cesar el comportamiento peligroso inmediatamente.

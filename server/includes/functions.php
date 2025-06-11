@@ -188,4 +188,4 @@ function logDeviceEvent($deviceId, $eventType, $message, $details = null) {
         ]),
         'timestamp' => date('Y-m-d H:i:s')
     ]);
-}
+} 

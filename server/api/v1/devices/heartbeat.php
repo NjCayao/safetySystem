@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-// Verificar token JWT
+// Verificar token (JWT o API Key)
 $headers = apache_request_headers();
 $authHeader = isset($headers['Authorization']) ? $headers['Authorization'] : '';
 
@@ -35,13 +35,53 @@ if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
     $token = $matches[1];
 }
 
-// Verificar token
-$jwt = new JwtHandler();
-$decoded = $jwt->verifyToken($token);
+$device_id = null;
+$machine_id = null;
 
-if (!$decoded) {
-    echo Response::error('Token inválido o expirado', 401);
-    exit();
+// ✅ NUEVO: Intentar primero como API Key
+try {
+    $database = new Database();
+    $db = $database->getConnection();
+    
+    // Buscar dispositivo por API Key
+    $stmt = $db->prepare("SELECT device_id, machine_id, api_key FROM devices WHERE api_key = ?");
+    $stmt->execute([password_hash($token, PASSWORD_DEFAULT)]);
+    
+    if ($stmt->rowCount() == 0) {
+        // Probar verificando hash
+        $stmt = $db->prepare("SELECT device_id, machine_id, api_key FROM devices");
+        $stmt->execute();
+        $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($devices as $device) {
+            if (password_verify($token, $device['api_key'])) {
+                $device_id = $device['device_id'];
+                $machine_id = $device['machine_id'];
+                break;
+            }
+        }
+    } else {
+        $device_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        $device_id = $device_data['device_id'];
+        $machine_id = $device_data['machine_id'];
+    }
+    
+} catch (Exception $e) {
+    // Si falla la verificación de API Key, intentar JWT
+}
+
+// ✅ Si no se encontró por API Key, intentar JWT
+if (!$device_id) {
+    $jwt = new JwtHandler();
+    $decoded = $jwt->verifyToken($token);
+    
+    if (!$decoded) {
+        echo Response::error('Token inválido o expirado', 401);
+        exit();
+    }
+    
+    $device_id = $decoded->device_id;
+    $machine_id = $decoded->machine_id ?? null;
 }
 
 // Obtener datos enviados
@@ -53,40 +93,58 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
     $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
 }
 
-// Actualizar estado del dispositivo
-$result = db_query(
-    "UPDATE devices 
-     SET last_access = NOW(), 
-         status = ?, 
-         ip_address = ?
-     WHERE device_id = ?",
-    [
+// ✅ NUEVO: Actualizar dispositivo por device_id
+try {
+    $database = new Database();
+    $db = $database->getConnection();
+    
+    $result = $db->prepare(
+        "UPDATE devices 
+         SET last_access = NOW(), 
+             status = ?, 
+             ip_address = ?
+         WHERE device_id = ?"
+    );
+    
+    $success = $result->execute([
         $data->status ?? 'online',
         $client_ip,
-        $decoded->device_id
-    ]
-);
-
-if ($result) {
-    // Registrar heartbeat en los logs
-    db_insert('system_logs', [
-        'log_type' => 'info',
-        'machine_id' => $decoded->machine_id,
-        'message' => "Heartbeat recibido del dispositivo {$decoded->device_id}",
-        'details' => json_encode([
-            'ip' => $client_ip,
-            'status' => $data->status ?? 'online',
-            'additional_info' => $data->info ?? null
-        ]),
-        'timestamp' => date('Y-m-d H:i:s')
+        $device_id
     ]);
+
+    if ($success && $result->rowCount() > 0) {
+        // Registrar heartbeat en los logs
+        try {
+            $log_stmt = $db->prepare(
+                "INSERT INTO system_logs (log_type, machine_id, message, details, timestamp) 
+                 VALUES (?, ?, ?, ?, ?)"
+            );
+            $log_stmt->execute([
+                'info',
+                $machine_id,
+                "Heartbeat recibido del dispositivo {$device_id}",
+                json_encode([
+                    'ip' => $client_ip,
+                    'status' => $data->status ?? 'online',
+                    'additional_info' => $data->info ?? null
+                ]),
+                date('Y-m-d H:i:s')
+            ]);
+        } catch (Exception $e) {
+            // Log error but don't fail the heartbeat
+        }
+        
+        echo Response::success([
+            'device_id' => $device_id,
+            'timestamp' => date('Y-m-d H:i:s'),
+            'status' => 'acknowledged'
+        ], 'Heartbeat recibido');
+        
+    } else {
+        echo Response::error('Dispositivo no encontrado o no se pudo actualizar', 404);
+    }
     
-    echo Response::success([
-        'device_id' => $decoded->device_id,
-        'timestamp' => date('Y-m-d H:i:s'),
-        'status' => 'acknowledged'
-    ], 'Heartbeat recibido');
-} else {
-    echo Response::error('Error al actualizar estado del dispositivo', 500);
+} catch (Exception $e) {
+    echo Response::error('Error al actualizar estado del dispositivo: ' . $e->getMessage(), 500);
 }
 ?>

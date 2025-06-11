@@ -215,3 +215,14 @@ production:
     # 🆕 Gestión térmica específica
     thermal_throttle_temp: 65    # Temperatura para reducir rendimiento
     thermal_shutdown_temp: 80    # Temperatura de apagado de emergencia
+
+  # Configuración de sincronización con el servidor
+  sync:
+    enabled: true
+    server_url: "http://192.168.1.100/safety_system"
+    device_id: "RPI50001"
+    api_key: "fe02131d43d2cd8099f09ad78ab13bce4f26d2cd2e2a1e7611986775e1636905"
+    auto_sync_interval: 300
+    batch_size: 25
+    connection_timeout: 20
+    max_retries: 5

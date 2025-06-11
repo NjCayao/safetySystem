@@ -1,3 +1,11 @@
+# conexion BD 
+server/ 
+    - config / 
+            - database.php  #Configuracion a la BD
+            - config.php # configuracion de la URL
+    api/
+        - database.php # sugerencia de conexion BD
+
 # INSTALAR PYTHON 3.9 
 INSTLAR CMAKE     https://cmake.org/download/
 Crear un entorno virtual de Python para el desarrollo: 
@@ -244,11 +252,38 @@ cd ~/safety_system  = entrar a la carpeta
 mv ~/proyecto.zip . = mover el zip a la carpeta 
 unzip proyecto.zip  = extraer el proyecto 
 rm proyecto.zip = eliminar el zip 
-# ✅ Para correr el sistema:
+# ✅ Para correr el sistema en entorno virtual:
 source ~/safety_env/bin/activate = crear el entorno virtual
 cd ~/safety_system = entrar al proyecto
 pip install -r requirements.txt  = instalar todos los requerimientos.
 pip install pygame = instalar la dependencia
+
+# CONECTAR EL PI CON EL PANEL
+cd ~/safety_system/client/config
+nano config.ini = editar el codigo directo desde el py
+Ctrl + X = para salir
+Y = para confirmar guardar
+Enter = para confirmar el nombre
+_________________
+luego :
+cd ~/safety_system = regresar a la carpeta del proyecto
+python3 -c "from configparser import ConfigParser; config = ConfigParser(); config.read('client/config/config.ini'); print('URL:', config.get('SERVER', 'api_url')); print('Device ID:', config.get('DEVICE', 'device_id')); print('API Key:', config.get('DEVICE', 'api_key')[:10] + '...')"
+ - copiar todo en una sola linea y obtener el resultado:
+ URL: http://192.168.1.100/safety_system/server/api/v1
+Device ID: RPI50001
+API Key: fe02131d43...
+
+# CARGAR LAS DEPENDENCIAS DEL PI
+cd ~/safety_system
+pip3 install opencv-python numpy requests pygame mediapipe
+
+- Para face-recognition en Pi, es mejor usar apt primero:
+sudo apt update
+sudo apt install python3-opencv python3-numpy python3-requests
+
+- Luego intentar face-recognition:
+pip3 install face-recognition
+
 
 # ejecutar
 python3 main_system.py
@@ -285,7 +320,31 @@ python main_system_wrapper.py ---Para usar el sistema con sincronización, simpl
 * * * * * Manual mente desde Xampp 
  C:\xampp\htdocs\safety_system\server\scripts\monitor_devices.php
 
- _________________
- boztezo_dtecttion -> corregido 10/05/25
- behavior_detection -> corregido 10/05/25
- distraction_detection -> corregido 10/05/25
+
+# API Key generada
+fe02131d43d2cd8099f09ad78ab13bce4f26d2cd2e2a1e7611986775e1636905
+ID Dispositivo: RPI50001
+Nombre: Raspberry Piloto01
+# CONECTAR EL PI CON EL PANEL
+1. Registrar el dispositivo en el dashboard:
+
+Ir a tu panel web (server/pages/devices/create.php)
+Registrar el Pi 5 con un ID único (ej: "RPI_EXCAVADORA_01")
+El sistema generará una API Key
+
+2. Configurar la API Key en el código Python:
+
+Buscar en tu código donde se configura la conexión al servidor
+Añadir la API Key que generó el dashboard
+Configurar la URL de tu servidor
+
+3. Configurar la IP/URL del servidor:
+
+El Pi necesita saber dónde está tu servidor web
+Puede ser IP local o dominio
+
+4. Probar la conexión:
+
+Ejecutar el sistema en el Pi
+Verificar que aparezca como "online" en el dashboard
+Comprobar que lleguen los reportes

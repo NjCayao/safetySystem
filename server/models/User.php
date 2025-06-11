@@ -23,7 +23,7 @@ class User {
         return db_fetch_one("SELECT * FROM users WHERE username = ?", [$username]);
     }
     
-    /**
+    /** 
      * Crea un nuevo usuario
      */
     public function createUser($userData) {

@@ -1,0 +1,7 @@
+Reporte de Seguridad - YAWN
+Fecha y hora: 20250610_212351
+Operador: Operador: Nilson Cayao
+Frame procesado: 3598
+Nivel de optimización: 0
+
+Acción recomendada: El operador debe cesar el comportamiento peligroso inmediatamente.

@@ -1,0 +1,9 @@
+Reporte de Seguridad - MULTIPLE_DISTRACTIONS
+Fecha y hora: 20250610_212943
+Operador: Operador: Nilson Cayao
+Frame procesado: 6063
+Nivel de optimización: 0
+Count: 6
+Time Window: 10 minutos
+
+Acción recomendada: El operador debe cesar el comportamiento peligroso inmediatamente.
