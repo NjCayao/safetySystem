@@ -117,9 +117,14 @@ audio:
   channels: 1                    # 🆕 Mono para ahorrar recursos
   buffer: 4096                   # 🆕 Buffer más grande para estabilidad
 
+# 🆕 CONFIGURACIÓN DE SINCRONIZACIÓN UNIFICADA (TODO EN UNA SECCIÓN)
 sync:
-  # Configuración para conexión de campo (posiblemente inestable)
-  server_url: "https://tuservidor.com/safety_system"
+  # Configuración del servidor y dispositivo
+  enabled: true
+  server_url: "https://safetysystem.devcayao.com"
+  device_id: "RPI50001"
+  api_key: "fe02131d43d2cd8099f09ad78ab13bce4f26d2cd2e2a1e7611986775e1636905"
+  device_type: "raspberry_pi_5"
   
   # Configuración ultra-robusta para Pi
   auto_sync_interval: 600        # 10 minutos - balance para Pi lento
@@ -130,6 +135,30 @@ sync:
   read_timeout: 60
   max_retries: 8                 # Más reintentos para conexiones inestables
   retry_delay: 15
+  
+  # Endpoints de API
+  auth_endpoint: "/auth/authenticate"
+  events_endpoint: "/events/create"
+  sync_batch_endpoint: "/sync/batch"
+  sync_status_endpoint: "/sync/status"
+  sync_confirm_endpoint: "/sync/confirm"
+  upload_image_endpoint: "/events/upload_image"
+  
+  # Configuración de prioridades para eventos
+  priority_types: "fatigue,unrecognized_operator"
+
+# 🆕 CONFIGURACIÓN DE CONEXIÓN
+connection:
+  check_interval: 30
+  retry_attempts: 3
+  retry_delay: 5
+
+# 🆕 CONFIGURACIÓN DE ALMACENAMIENTO
+storage:
+  db_path: "client/db/local.db"
+  max_stored_events: 1000
+  max_stored_images: 100
+  image_storage_path: "client/images/"
 
 logging:
   # Logging ultra-optimizado para Pi
@@ -215,14 +244,3 @@ production:
     # 🆕 Gestión térmica específica
     thermal_throttle_temp: 65    # Temperatura para reducir rendimiento
     thermal_shutdown_temp: 80    # Temperatura de apagado de emergencia
-
-  # Configuración de sincronización con el servidor
-  sync:
-    enabled: true
-    server_url: "http://192.168.1.100/safety_system"
-    device_id: "RPI50001"
-    api_key: "fe02131d43d2cd8099f09ad78ab13bce4f26d2cd2e2a1e7611986775e1636905"
-    auto_sync_interval: 300
-    batch_size: 25
-    connection_timeout: 20
-    max_retries: 5

@@ -3,11 +3,12 @@ import json
 import os
 import time
 import logging
-from configparser import ConfigParser
 
-# Cargar configuración
-config = ConfigParser()
-config.read('config/config.ini')
+# 🆕 CAMBIO: Usar adaptador YAML en lugar de ConfigParser
+from client.config.yaml_config_adapter import get_yaml_config
+
+# Cargar configuración desde YAML
+config = get_yaml_config()
 
 logger = logging.getLogger('api_client')
 
@@ -20,6 +21,12 @@ class ApiClient:
         self.token_expiration = 0
         self.retry_attempts = config.getint('CONNECTION', 'retry_attempts')
         self.retry_delay = config.getint('CONNECTION', 'retry_delay')
+        
+        # Log de configuración cargada
+        logger.info(f"ApiClient inicializado:")
+        logger.info(f"  Base URL: {self.base_url}")
+        logger.info(f"  Device ID: {self.device_id}")
+        logger.info(f"  Retry attempts: {self.retry_attempts}")
     
     def authenticate(self):
         """Autenticar con el servidor y obtener token JWT"""
@@ -30,6 +37,7 @@ class ApiClient:
                 "api_key": self.api_key
             }
             
+            logger.info(f"Intentando autenticación en: {endpoint}")
             response = self._make_request('POST', endpoint, json=payload)
             
             if response and response.status_code == 200:

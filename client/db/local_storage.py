@@ -5,11 +5,12 @@ import logging
 import uuid
 import time
 from datetime import datetime
-from configparser import ConfigParser
 
-# Cargar configuración
-config = ConfigParser()
-config.read('config/config.ini')
+# 🆕 CAMBIO: Usar adaptador YAML en lugar de ConfigParser
+from client.config.yaml_config_adapter import get_yaml_config
+
+# Cargar configuración desde YAML
+config = get_yaml_config()
 
 logger = logging.getLogger('local_storage')
 
@@ -21,6 +22,12 @@ class LocalStorage:
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self.create_tables()
+        
+        # Log de configuración cargada
+        logger.info(f"LocalStorage inicializado:")
+        logger.info(f"  Database path: {db_path}")
+        logger.info(f"  Max stored events: {config.getint('STORAGE', 'max_stored_events')}")
+        logger.info(f"  Max stored images: {config.getint('STORAGE', 'max_stored_images')}")
     
     def create_tables(self):
         """Crear tablas necesarias si no existen"""

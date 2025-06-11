@@ -2,8 +2,8 @@ import cv2
 import time
 import logging
 
-# Importar el módulo original
-from fatigue_detection import FatigueDetector
+# 🆕 IMPORTS CORREGIDOS: Importar desde la raíz del proyecto
+from fatigue_detection import FatigueDetector  # Módulo principal en raíz
 from client.utils.event_manager import EventManager
 
 logger = logging.getLogger('fatigue_adapter')
@@ -11,17 +11,20 @@ logger = logging.getLogger('fatigue_adapter')
 class FatigueAdapter:
     """
     Adaptador para el detector de fatiga que conecta con el sistema de sincronización.
+    UBICACIÓN: core/adapters/fatigue_adapter.py
     """
     def __init__(self):
-        # Inicializar el detector original
+        # Inicializar el detector original (desde raíz)
         self.detector = FatigueDetector()
         
-        # Inicializar gestor de eventos
+        # Inicializar gestor de eventos (cliente)
         self.event_manager = EventManager()
         
         # Control de eventos
         self.last_fatigue_event = 0
         self.min_time_between_events = 30  # segundos
+        
+        logger.info("FatigueAdapter inicializado desde core/adapters/")
     
     def detect_and_sync(self, frame, operator_id=None):
         """
@@ -48,7 +51,8 @@ class FatigueAdapter:
                     'fatigue_level': result.get('fatigue_level', 'medium'),
                     'eyes_closed_duration': result.get('eyes_closed_duration', 0),
                     'confidence': result.get('confidence', 0.8),
-                    'detection_time': time.time()
+                    'detection_time': time.time(),
+                    'adapter_location': 'core/adapters/fatigue_adapter.py'
                 }
                 
                 # Registrar evento para sincronización
@@ -65,6 +69,16 @@ class FatigueAdapter:
         
         return result
     
-    # Método para acceder directamente al detector original
     def get_detector(self):
+        """Método para acceder directamente al detector original"""
         return self.detector
+    
+    def get_adapter_info(self):
+        """Información del adaptador para debugging"""
+        return {
+            'name': 'FatigueAdapter',
+            'location': 'core/adapters/fatigue_adapter.py',
+            'detector_type': type(self.detector).__name__,
+            'last_fatigue_event': self.last_fatigue_event,
+            'min_time_between_events': self.min_time_between_events
+        }

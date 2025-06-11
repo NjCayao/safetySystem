@@ -3,11 +3,12 @@ import time
 import logging
 import threading
 from datetime import datetime, timedelta
-from configparser import ConfigParser
 
-# Cargar configuración
-config = ConfigParser()
-config.read('config/config.ini')
+# 🆕 CAMBIO: Usar adaptador YAML en lugar de ConfigParser
+from client.config.yaml_config_adapter import get_yaml_config
+
+# Cargar configuración desde YAML
+config = get_yaml_config()
 
 logger = logging.getLogger('sync')
 
@@ -21,6 +22,11 @@ class SyncManager:
         self.is_running = False
         self.thread = None
         self.is_syncing = False
+        
+        # Log de configuración cargada
+        logger.info(f"SyncManager inicializado:")
+        logger.info(f"  Sync interval: {self.sync_interval}s")
+        logger.info(f"  Batch size: {self.batch_size}")
     
     def start_auto_sync(self):
         """Iniciar sincronización automática en un hilo separado"""
